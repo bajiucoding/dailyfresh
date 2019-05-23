@@ -16,4 +16,8 @@ urlpatterns = [
     url(r'^register_handle/$',views.register_handle),
     url(r'^login/',views.login,name='login_url_name'),
     url(r'^login_handle/$',views.login_handle),
+    url(r'logout',views.logout,name='logout_url_name'),
+    url(r'info',views.info,name='info_url_name'),
+    url(r'order',views.order,name='order_url_name'),
+    url(r'site',views.site,name='site_url_name')
 ]

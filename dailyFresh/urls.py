@@ -18,5 +18,9 @@ from django.urls import path,include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path(r'user/',include(('user.urls','user'),namespace='user_namespace'))
+    path(r'user/',include(('user.urls','user'),namespace='user_namespace')),
+    path(r'tinymce/',include('tinymce.urls')),
+    path(r'',include(('goods.urls','goods'),namespace='goods_namespace')),
+    path(r'^search/',include('haystack.urls')),
+    path(r'cart/',include(('cart.urls','cart'),namespace='cart_namespace')),
 ]

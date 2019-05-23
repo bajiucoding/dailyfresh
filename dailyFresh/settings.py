@@ -25,7 +25,7 @@ SECRET_KEY = '6xtvbdbm^e01avr&jv)l1^g&igw!m1!l!p8c2ez377cdn__33$'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -38,6 +38,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'user',
+    'goods',
+    'cart',
+    'tinymce',
+    'haystack',
 ]
 
 MIDDLEWARE = [
@@ -55,8 +59,7 @@ ROOT_URLCONF = 'dailyFresh.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [os.path.join(BASE_DIR, 'templates')]
-        ,
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -78,7 +81,7 @@ WSGI_APPLICATION = 'dailyFresh.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST':'localhost',
+        'HOST':'192.168.0.106',
         'PORT':'3306',
         'USER':'root',
         'PASSWORD':'123',
@@ -128,6 +131,23 @@ STATICFILES_DIRS=[
     os.path.join(BASE_DIR,'static')
 ]
 
+#富文本编辑器设置
+TINYMCE_DEFAULT_CONFIG = {
+    'theme':'advanced',
+    'width':600,
+    'height':400,
+}
+
+#全文搜索引擎
+HAYSTACK_CONNECTIONS = {
+    'default':{
+        'ENGINE':'haystack.backends.whoosh_cn_backend.WhooshEngine',
+        'PATH':os.path.join(BASE_DIR,'whoosh_index')
+    }
+}
+#自动生成索引
+HAYSTACK_SIGNAL_PROCESSOR = 'haystack.signals.RealtimeSignalProcessor'
+HAYSTACK_SEARCH_RESULTS_PER_PAGE = 10
 #logging module
 from logging.handlers import SysLogHandler
 LOGGING = {

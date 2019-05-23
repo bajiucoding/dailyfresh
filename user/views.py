@@ -3,11 +3,12 @@ from django.shortcuts import render,redirect
 from django.http import JsonResponse,HttpResponseRedirect
 from .models import userInfo
 from hashlib import sha1
-from django.db import connection
+import re
+from .login_auth import auth
 import logging
 # Create your views here.
-logger = logging.getLogger('django_file')
-logger1 = logging.getLogger('django_console')
+logger1 = logging.getLogger('django_file')
+logger = logging.getLogger('django_console')
 def register(request):
     logger.info('开始渲染并返回注册页面')
     logger1.info('开始渲染并返回注册页面')
@@ -22,15 +23,28 @@ def register_handle(request):
     upwd = post.get('pwd')
     upwd2 = post.get('cpwd')
     uemail = post.get('email')
+    allow = post.get('allow')
     logger.info('验证数据' +uname+uemail+upwd+upwd2)
+
     #后台判断不能为空
-    if not (uname,upwd,upwd2,uemail):
-        error_msg = '不能为空'
-        return render(request,'user/register.html',{'error':error_msg})
+    if not all([uname,upwd,upwd2,uemail]):
+        return render(request,'user/register.html',{'error_msg':'不能为空'})
+
+    #判断邮箱是否符合规定
+    if not re.match(r'^[a-z0-9][\w.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$',uemail):
+        return render(request,'user/register.html',{'error_msg':'邮箱格式不正确'})
+
     #判断两次密码是否一致
     if upwd != upwd2:
-        error_msg = '两次密码不一致'
-        return render(request, 'user/register.html', {'error': error_msg})
+        return render(request, 'user/register.html', {'error_msg': '两次密码不一致'})
+
+    #判断用户名是否存在
+    user = userInfo.objects.filter(uname=uname)
+    if user:
+        return render(request,'user/register.html',{'error_msg':'用户名已存在'})
+    else:
+        user = None
+
     #密码加密
     logger.info('密码加密')
     s1 = sha1()
@@ -74,24 +88,93 @@ def login_handle(request):
 
     #根据用户名查询对象
     users = userInfo.objects.filter(uname=uname)
-    print(uname)
+    logger.info('当前登录用户'+users[0].uname)
     if len(users) == 1:
         s1 = sha1()
         s1.update(upwd.encode('utf-8'))
         if s1.hexdigest()==users[0].upwd:
-            red = HttpResponseRedirect('/user/info/')
+            url = request.COOKIES.get('url','/')
+            red = HttpResponseRedirect(url)
             if jizhu != 0:
                 red.set_cookie('uname',uname)
             else:
                 red.set_cookie('uname','',max_age=-1)
             request.session['user_id'] = users[0].id
             request.session['user_name'] = uname
+            request.session.set_expiry(0)
+            logger.info('登录成功，已保存session'+'用户名'+request.session['user_name'])
             return red
         else:
             #pwd错误
             context = {'title': '用户登录', 'error_name': 0, 'error_pwd': 1, 'uname': uname, 'upwd': upwd}
+            logger.info('登录密码错误')
             return render(request, 'user/login.html', context)
     else:
         #uname错误
+        logger.info('用户名错误')
         context = {'title':'用户登录','error_name':1,'error_pwd':0,'uname':uname,'upwd':upwd}
         return render(request,'user/login.html',context)
+
+def logout(request):
+    '''
+    退出登录方法
+    :param request:
+    :return:
+    '''
+    logger.info('当前用户'+request.session['user_name']+'退出登录')
+    del request.session['user_id']
+    del request.session['user_name']
+    return redirect('/')
+
+@auth
+def info(request):
+    '''
+    现实用户信息界面
+    :param request:
+    :return:
+    '''
+    logger.info('进入用户信息界面'+request.method+request.session.get('user_name',None))
+    uname = request.session.get('user_name',None)
+    logger.info('返回数据'+uname)
+    user = userInfo.objects.get(uname=uname)
+    # ustockAddress = userInfo.objects.get(uname=uname).uemail
+    context = {'name':uname,
+               'email':user.uemail,
+               'people':user.ustockAddress}
+    logger.info('返回数据'+context['name']+context['email'])
+    return render(request,'user/user_center_info.html',context)
+
+@auth
+def order(request):
+    '''
+    展示用户订单页面
+    :param request:
+    :return:
+    '''
+    logger.info('当前用户'+request.session['user_name']+'进入订单查询界面')
+    return render(request,'user/user_center_order.html')
+@auth
+def site(request):
+    '''
+    用户收货地址界面，可以修改
+    :param request:
+    :return:
+    '''
+    user = userInfo.objects.filter(id=request.session['user_id'])[0]
+    if request.method == 'POST':
+        logger.info('开始更改收货地址了'+request.method)
+        post = request.POST
+        user.ustockAddress = post.get('people')
+        user.uaddress = post.get('address')
+        user.uemailAddress = post.get('num')
+        user.uphone = post.get('phone')
+        if not all([user.ustockAddress,user.uaddress,user.uemailAddress,user.uphone]):
+            # return render(request,'user/user_center_site.html',{'error_msg':'不能为空'})
+            return redirect('/user/site/')
+        user.save()
+        context = {'title':'用户收货地址','user':user}
+        return render(request,'user/user_center_site.html',context)
+    else:
+        logger.info('这是get请求'+request.method)
+        return render(request,'user/user_center_site.html',{'user':user})
+
